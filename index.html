@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>INCOME_TRACKER.SYS</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="theme-color" content="#090c0e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #090c0e;
+    --bg-grid: #0d1114;
+    --panel: #0e1417;
+    --panel2: #121a1e;
+    --border: #1e2c31;
+    --border-bright: #2a4550;
+    --text: #d6e8e8;
+    --muted: #5c7679;
+    --dim: #3b4d50;
+    --cyan: #35e6d0;
+    --cyan-dim: rgba(53,230,208,0.12);
+    --amber: #f2a154;
+    --amber-dim: rgba(242,161,84,0.12);
+    --danger: #ff5f6d;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 13px;
+  }
+  body {
+    padding: 28px;
+    background-image:
+      linear-gradient(var(--bg-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
+    background-size: 10px 10px;
+    position: relative;
+  }
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.012) 0px,
+      rgba(255,255,255,0.012) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    z-index: 999;
+  }
+
+  .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .brand {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--cyan);
+    text-shadow: 0 0 12px rgba(53,230,208,0.35);
+  }
+  .brand .prompt { color: var(--dim); font-weight: 400; }
+  .cursor {
+    display: inline-block;
+    width: 7px; height: 13px;
+    background: var(--cyan);
+    margin-left: 4px;
+    animation: blink 1s step-end infinite;
+    vertical-align: -2px;
+    box-shadow: 0 0 8px rgba(53,230,208,0.6);
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  .sys-tag {
+    color: var(--dim);
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+  .sub {
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.3px;
+    margin-bottom: 22px;
+    text-transform: uppercase;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    margin-bottom: 20px;
+    border: 1px solid var(--border);
+  }
+  .stat-card {
+    background: var(--panel);
+    padding: 16px 18px;
+    position: relative;
+  }
+  .stat-card .label {
+    color: var(--dim);
+    font-size: 10px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .stat-card .label::before { content: "// "; color: var(--border-bright); }
+  .stat-card .value {
+    font-size: 26px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.5px;
+  }
+  .value.cyan { color: var(--cyan); text-shadow: 0 0 14px rgba(53,230,208,0.3); }
+  .value.amber { color: var(--amber); }
+  .value.plain { color: var(--text); }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 20px;
+    margin-bottom: 20px;
+    position: relative;
+  }
+  /* HUD corner brackets */
+  .panel::before, .panel::after,
+  .panel .bl, .panel .br {
+    content: "";
+    position: absolute;
+    width: 10px; height: 10px;
+    border-color: var(--border-bright);
+    border-style: solid;
+    opacity: 0.8;
+  }
+  .panel::before { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+  .panel::after   { top: -1px; right: -1px; border-width: 2px 2px 0 0; }
+  .panel .bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; }
+  .panel .br { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+
+  .panel h2 {
+    font-size: 11px;
+    margin: 0 0 16px;
+    color: var(--muted);
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel h2::before {
+    content: "";
+    width: 6px; height: 6px;
+    background: var(--cyan);
+    box-shadow: 0 0 6px var(--cyan);
+    display: inline-block;
+  }
+
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left;
+    color: var(--dim);
+    font-weight: 600;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 0 8px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 2px;
+    border-bottom: 1px solid var(--border);
+  }
+  tr:hover td { background: rgba(53,230,208,0.03); }
+  td input {
+    width: 100%;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text);
+    padding: 9px 8px;
+    font-size: 13px;
+    font-family: inherit;
+    font-variant-numeric: tabular-nums;
+  }
+  td input::placeholder { color: var(--dim); }
+  td input:hover { border-color: var(--border); background: var(--panel2); }
+  td input:focus {
+    outline: none;
+    border-color: var(--cyan);
+    background: var(--panel2);
+    box-shadow: 0 0 0 1px rgba(53,230,208,0.2);
+  }
+  td input[type="number"] { text-align: right; color: var(--cyan); }
+  td input[type="date"] { color: var(--muted); }
+
+  .del-btn {
+    background: none;
+    border: 1px solid transparent;
+    color: var(--dim);
+    cursor: pointer;
+    font-size: 13px;
+    padding: 7px 10px;
+  }
+  .del-btn:hover { color: var(--danger); border-color: var(--danger); background: rgba(255,95,109,0.08); }
+
+  .add-row-btn {
+    margin-top: 14px;
+    background: transparent;
+    border: 1px dashed var(--border-bright);
+    color: var(--muted);
+    padding: 11px 16px;
+    cursor: pointer;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    width: 100%;
+    font-family: inherit;
+  }
+  .add-row-btn:hover { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-dim); }
+
+  .chart-wrap { position: relative; height: 280px; }
+
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .save-note {
+    font-size: 10px;
+    color: var(--cyan);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .save-note.show { opacity: 1; }
+  .reset-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--dim);
+    padding: 7px 12px;
+    cursor: pointer;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-family: inherit;
+  }
+  .reset-btn:hover { color: var(--danger); border-color: var(--danger); }
+
+  .legend-row {
+    display: flex;
+    gap: 18px;
+    margin-bottom: 14px;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .legend-row span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend-row .dot { width: 8px; height: 8px; display: inline-block; }
+  .dot.cyan { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
+  .dot.amber { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+</style>
+</head>
+<body>
+
+<div class="page">
+<div class="top">
+  <div class="brand"><span class="prompt">~/finance$</span> income_tracker<span class="cursor"></span></div>
+  <div class="sys-tag">v1.2 // local-storage</div>
+</div>
+<div class="sub">редактируемый журнал доходов и выполненных задач</div>
+
+<div class="stats">
+  <div class="stat-card">
+    <div class="label">total_income</div>
+    <div class="value cyan" id="totalIncome">0</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">entries_count</div>
+    <div class="value plain" id="totalEntries">0</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">avg_per_entry</div>
+    <div class="value amber" id="avgIncome">0</div>
+  </div>
+</div>
+
+<div class="panel">
+  <span class="bl"></span><span class="br"></span>
+  <div class="toolbar">
+    <h2>dynamics_log</h2>
+    <span class="save-note" id="saveNote">saved ✓</span>
+  </div>
+  <div class="legend-row">
+    <span><i class="dot cyan"></i>cumulative_total</span>
+    <span><i class="dot amber"></i>per_entry_income</span>
+  </div>
+  <div class="chart-wrap">
+    <canvas id="chart"></canvas>
+  </div>
+</div>
+
+<div class="panel">
+  <span class="bl"></span><span class="br"></span>
+  <div class="toolbar">
+    <h2>entries_table</h2>
+    <button class="reset-btn" onclick="resetAll()">purge_all</button>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:130px;">date</th>
+        <th>task</th>
+        <th style="width:120px;">income</th>
+        <th>note</th>
+        <th style="width:36px;"></th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+  <button class="add-row-btn" onclick="addRow()">+ add_entry</button>
+</div>
+</div>
+
+<script>
+let entries = [];
+let chart = null;
+const STORAGE_KEY = 'tracker-entries';
+
+function todayStr() {
+  return new Date().toISOString().slice(0,10);
+}
+
+async function load() {
+  try {
+    const res = await window.storage.get(STORAGE_KEY, false);
+    entries = res ? JSON.parse(res.value) : defaultEntries();
+  } catch (e) {
+    entries = defaultEntries();
+  }
+  render();
+}
+
+function defaultEntries() {
+  return [
+    { date: todayStr(), task: 'Пример: сделал проект', income: 100, note: '' }
+  ];
+}
+
+async function save() {
+  try {
+    await window.storage.set(STORAGE_KEY, JSON.stringify(entries), false);
+    const note = document.getElementById('saveNote');
+    note.classList.add('show');
+    setTimeout(() => note.classList.remove('show'), 1000);
+  } catch (e) {
+    console.error('Storage error', e);
+  }
+}
+
+function addRow() {
+  entries.push({ date: todayStr(), task: '', income: 0, note: '' });
+  render();
+  save();
+}
+
+function deleteRow(i) {
+  entries.splice(i, 1);
+  render();
+  save();
+}
+
+function updateField(i, field, value) {
+  if (field === 'income') {
+    value = parseFloat(value) || 0;
+  }
+  entries[i][field] = value;
+  renderStats();
+  renderChart();
+  save();
+}
+
+function render() {
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  entries.forEach((e, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="date" value="${e.date}" onchange="updateField(${i},'date',this.value)"></td>
+      <td><input type="text" value="${escapeHtml(e.task)}" placeholder="task_desc" onchange="updateField(${i},'task',this.value)"></td>
+      <td><input type="number" value="${e.income}" step="any" onchange="updateField(${i},'income',this.value)"></td>
+      <td><input type="text" value="${escapeHtml(e.note || '')}" placeholder="—" onchange="updateField(${i},'note',this.value)"></td>
+      <td><button class="del-btn" onclick="deleteRow(${i})">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  renderStats();
+  renderChart();
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function renderStats() {
+  const total = entries.reduce((s, e) => s + (parseFloat(e.income) || 0), 0);
+  document.getElementById('totalIncome').textContent = total.toLocaleString('ru-RU');
+  document.getElementById('totalEntries').textContent = String(entries.length).padStart(2, '0');
+  const avg = entries.length ? total / entries.length : 0;
+  document.getElementById('avgIncome').textContent = avg.toLocaleString('ru-RU', { maximumFractionDigits: 1 });
+}
+
+function renderChart() {
+  const sorted = [...entries]
+    .filter(e => e.date)
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  let cumulative = 0;
+  const labels = [];
+  const cumulativeData = [];
+  const perEntryData = [];
+
+  sorted.forEach(e => {
+    cumulative += (parseFloat(e.income) || 0);
+    labels.push(e.date);
+    cumulativeData.push(cumulative);
+    perEntryData.push(parseFloat(e.income) || 0);
+  });
+
+  const ctx = document.getElementById('chart').getContext('2d');
+  if (chart) chart.destroy();
+
+  chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'cumulative_total',
+          data: cumulativeData,
+          backgroundColor: 'rgba(53,230,208,0.7)',
+          borderColor: 'rgba(53,230,208,1)',
+          borderWidth: 1,
+          borderSkipped: false,
+          yAxisID: 'y',
+        },
+        {
+          label: 'per_entry_income',
+          data: perEntryData,
+          backgroundColor: 'rgba(242,161,84,0.7)',
+          borderColor: 'rgba(242,161,84,1)',
+          borderWidth: 1,
+          borderSkipped: false,
+          yAxisID: 'y1',
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#5c7679', font: { family: 'JetBrains Mono', size: 10 } },
+          grid: { color: '#1e2c31' }
+        },
+        y: {
+          type: 'linear',
+          position: 'left',
+          ticks: { color: '#5c7679', font: { family: 'JetBrains Mono', size: 10 } },
+          grid: { color: '#1e2c31' },
+          title: { display: true, text: 'cumulative', color: '#3b4d50', font: { family: 'JetBrains Mono', size: 10 } }
+        },
+        y1: {
+          type: 'linear',
+          position: 'right',
+          ticks: { color: '#5c7679', font: { family: 'JetBrains Mono', size: 10 } },
+          grid: { display: false },
+          title: { display: true, text: 'per_entry', color: '#3b4d50', font: { family: 'JetBrains Mono', size: 10 } }
+        }
+      }
+    }
+  });
+}
+
+async function resetAll() {
+  if (!confirm('Удалить все записи?')) return;
+  entries = [];
+  render();
+  await save();
+}
+
+load();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>

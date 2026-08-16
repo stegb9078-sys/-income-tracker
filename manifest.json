@@ -1,0 +1,14 @@
+{
+  "name": "Income Tracker",
+  "short_name": "Tracker",
+  "description": "Редактируемый журнал доходов и выполненных задач с графиками динамики",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#090c0e",
+  "theme_color": "#090c0e",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
